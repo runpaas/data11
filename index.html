@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>기업 5개년 매출 통계 분석 대시보드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS (xlsx) for custom file upload -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="top-nav">
+    <div class="nav-brand">
+      <div class="logo-icon">📊</div>
+      <div>
+        <h1>기업 5개년 매출 통계분석 대시보드</h1>
+        <p class="subtitle">한빛테크 · 미래솔루션 · 새봄산업 (2021.01 ~ 2025.12, 60개월 종합 통계)</p>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <label class="btn btn-outline" for="file-upload">
+        📁 다른 엑셀 불러오기
+        <input type="file" id="file-upload" accept=".xlsx, .xls" style="display:none;">
+      </label>
+      <button class="btn btn-primary" id="btn-reset-data">기본 데이터 복원</button>
+    </div>
+  </header>
+
+  <!-- Summary KPI Cards -->
+  <section class="kpi-container" id="kpi-cards">
+    <!-- Populated by JS -->
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" data-tab="tab-overview">1. 5개년 매출 추이 & 누적</button>
+    <button class="tab-btn" data-tab="tab-stats">2. 기술통계량</button>
+    <button class="tab-btn" data-tab="tab-cagr">3. 성장률 & CAGR</button>
+    <button class="tab-btn" data-tab="tab-dispersion">4. 변동성 (CV & Boxplot)</button>
+    <button class="tab-btn" data-tab="tab-ma">5. 이동평균 (MA 3/6/12)</button>
+    <button class="tab-btn" data-tab="tab-season">6. 계절성 & 월별 패턴</button>
+    <button class="tab-btn" data-tab="tab-corr">7. 상관분석 & 공분산</button>
+    <button class="tab-btn" data-tab="tab-reg">8. 선형회귀 & 2026 예측</button>
+    <button class="tab-btn" data-tab="tab-shares">9. 시장점유율 & HHI</button>
+    <button class="tab-btn" data-tab="tab-dist">10. 정규분포 & Z-score</button>
+    <button class="tab-btn" data-tab="tab-raw">📋 원본 데이터표</button>
+  </nav>
+
+  <!-- Main Content Tab Panes -->
+  <main class="main-wrapper">
+    <!-- Tab 1: 5개년 매출 추이 & 누적 -->
+    <section class="tab-pane active" id="tab-overview">
+      <div class="section-header">
+        <div>
+          <h2>Method 1. 시계열 추이 분석 (Time Series Trend & Area)</h2>
+          <p>60개월간 3개 기업의 매출 흐름과 전체 시장 규모의 변화를 파악합니다.</p>
+        </div>
+        <div class="control-group">
+          <label><input type="radio" name="trend-view" value="line" checked> 개별 라인</label>
+          <label><input type="radio" name="trend-view" value="stacked"> 누적 스택 (시장 규모)</label>
+        </div>
+      </div>
+      <div class="chart-card">
+        <canvas id="chart-trend" height="380"></canvas>
+      </div>
+      <div class="insight-box" id="insight-trend"></div>
+    </section>
+
+    <!-- Tab 2: 기술통계량 -->
+    <section class="tab-pane" id="tab-stats">
+      <div class="section-header">
+        <div>
+          <h2>Method 2. 기초 기술통계량 비교 (Descriptive Statistics)</h2>
+          <p>평균, 표준편차, 중앙값, 최댓값, 최솟값, 왜도(Skewness), 첨도(Kurtosis) 비교</p>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="table-card">
+          <table class="styled-table" id="table-stats">
+            <thead>
+              <tr>
+                <th>통계 지표</th>
+                <th>한빛테크</th>
+                <th>미래솔루션</th>
+                <th>새봄산업</th>
+                <th>전체 합계</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="chart-card">
+          <canvas id="chart-mean-sd" height="320"></canvas>
+        </div>
+      </div>
+      <div class="insight-box" id="insight-stats"></div>
+    </section>
+
+    <!-- Tab 3: 성장률 & CAGR -->
+    <section class="tab-pane" id="tab-cagr">
+      <div class="section-header">
+        <div>
+          <h2>Method 3. 연평균 복합 성장률 (CAGR) 및 MoM/YoY 성장 분석</h2>
+          <p>2021년 대비 2025년의 성장 가속도 및 전년 동기 대비(YoY) 매출 신장률</p>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="chart-card">
+          <h3>연도별 총매출 및 전년비 성장률 (YoY)</h3>
+          <canvas id="chart-annual-growth" height="300"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>연평균 복합성장률 (CAGR 2021 → 2025)</h3>
+          <canvas id="chart-cagr" height="300"></canvas>
+        </div>
+      </div>
+      <div class="table-card" style="margin-top: 1.5rem;">
+        <table class="styled-table" id="table-cagr">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>2021년</th>
+              <th>2022년</th>
+              <th>2023년</th>
+              <th>2024년</th>
+              <th>2025년</th>
+              <th>5개년 총합</th>
+              <th>4개년 CAGR</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="insight-box" id="insight-cagr"></div>
+    </section>
+
+    <!-- Tab 4: 변동성 분석 -->
+    <section class="tab-pane" id="tab-dispersion">
+      <div class="section-header">
+        <div>
+          <h2>Method 4. 산포도 및 변동계수(CV) 분석</h2>
+          <p>평균 대비 표준편차 비율(CV = σ/μ)을 통해 실적 안정성과 변동 리스크를 평가합니다.</p>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="chart-card">
+          <h3>변동계수(CV %) 비교</h3>
+          <canvas id="chart-cv" height="300"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>매출 사분위수(IQR) 및 극값 분포</h3>
+          <canvas id="chart-iqr" height="300"></canvas>
+        </div>
+      </div>
+      <div class="insight-box" id="insight-dispersion"></div>
+    </section>
+
+    <!-- Tab 5: 이동평균선 -->
+    <section class="tab-pane" id="tab-ma">
+      <div class="section-header">
+        <div>
+          <h2>Method 5. 이동평균 평활화 (Moving Average Smoothing)</h2>
+          <p>단기 월별 노이즈를 제거하여 3개월, 6개월, 12개월 중장기 추세를 필터링합니다.</p>
+        </div>
+        <div class="control-group">
+          <label>기업 선택:
+            <select id="ma-company-select" class="form-select">
+              <option value="hanbit">한빛테크</option>
+              <option value="mirae">미래솔루션</option>
+              <option value="saebom">새봄산업</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="chart-card">
+        <canvas id="chart-ma" height="380"></canvas>
+      </div>
+      <div class="insight-box" id="insight-ma"></div>
+    </section>
+
+    <!-- Tab 6: 계절성 분석 -->
+    <section class="tab-pane" id="tab-season">
+      <div class="section-header">
+        <div>
+          <h2>Method 6. 월별 계절성 지수 (Seasonality Index & Monthly Pattern)</h2>
+          <p>1월부터 12월까지의 5개년 평균 실적과 계절 지표를 통해 성수기/비수기를 판정합니다.</p>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="chart-card">
+          <h3>월별 평균 매출 패턴 (1월 ~ 12월)</h3>
+          <canvas id="chart-monthly-pattern" height="320"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>기업별 계절 지수 (100% = 연평균 기준선)</h3>
+          <canvas id="chart-seasonal-radar" height="320"></canvas>
+        </div>
+      </div>
+      <div class="insight-box" id="insight-season"></div>
+    </section>
+
+    <!-- Tab 7: 상관분석 & 공분산 -->
+    <section class="tab-pane" id="tab-corr">
+      <div class="section-header">
+        <div>
+          <h2>Method 7. 피어슨 상관계수 (Pearson Correlation & Covariance)</h2>
+          <p>기업 간 매출 등락의 상호 연관성(동반 성장 또는 대체 경쟁 관계)을 파악합니다.</p>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="table-card">
+          <h3>상관계수 행렬 (Correlation Matrix, r)</h3>
+          <table class="styled-table matrix-table" id="table-corr">
+            <thead>
+              <tr>
+                <th>기업</th>
+                <th>한빛테크</th>
+                <th>미래솔루션</th>
+                <th>새봄산업</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <h3 style="margin-top:1.5rem;">공분산 행렬 (Covariance Matrix, Cov)</h3>
+          <table class="styled-table matrix-table" id="table-cov">
+            <thead>
+              <tr>
+                <th>기업</th>
+                <th>한빛테크</th>
+                <th>미래솔루션</th>
+                <th>새봄산업</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="chart-card">
+          <h3>산점도 행렬 (Scatter Matrix)</h3>
+          <div style="display:flex; gap:0.5rem; margin-bottom: 0.5rem;">
+            <select id="scatter-pair" class="form-select">
+              <option value="hanbit-mirae">한빛테크 vs 미래솔루션</option>
+              <option value="hanbit-saebom">한빛테크 vs 새봄산업</option>
+              <option value="mirae-saebom">미래솔루션 vs 새봄산업</option>
+            </select>
+          </div>
+          <canvas id="chart-scatter" height="280"></canvas>
+        </div>
+      </div>
+      <div class="insight-box" id="insight-corr"></div>
+    </section>
+
+    <!-- Tab 8: 선형회귀 & 예측 -->
+    <section class="tab-pane" id="tab-reg">
+      <div class="section-header">
+        <div>
+          <h2>Method 8. 단순 선형 회귀 모형 & 2026년 매출 예측</h2>
+          <p>최소자승법(OLS: y = ax + b)과 결정계수(R²)를 통한 2026년(12개월) 예측</p>
+        </div>
+      </div>
+      <div class="chart-card">
+        <canvas id="chart-regression" height="380"></canvas>
+      </div>
+      <div class="grid-2col" style="margin-top: 1.5rem;">
+        <div class="table-card">
+          <h3>회귀 방정식 및 모형 적합도</h3>
+          <table class="styled-table" id="table-reg">
+            <thead>
+              <tr>
+                <th>기업</th>
+                <th>기울기(월 증가량)</th>
+                <th>절편(초기값)</th>
+                <th>결정계수 (R²)</th>
+                <th>추세 판정</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-card">
+          <h3>2026년 예측 연매출 (억원)</h3>
+          <table class="styled-table" id="table-pred">
+            <thead>
+              <tr>
+                <th>기업</th>
+                <th>2025년 실제</th>
+                <th>2026년 회귀 예측</th>
+                <th>예상 증감률</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="insight-box" id="insight-reg"></div>
+    </section>
+
+    <!-- Tab 9: 시장점유율 & HHI -->
+    <section class="tab-pane" id="tab-shares">
+      <div class="section-header">
+        <div>
+          <h2>Method 9. 시장점유율(Market Share) 및 허핀달-허쉬만 지수(HHI)</h2>
+          <p>시장 집중도(Monopoly vs Competitive Market) 변화와 점유율 재편 과정</p>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="chart-card">
+          <h3>월별 시장점유율 변화 (%)</h3>
+          <canvas id="chart-market-share" height="320"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>시장 집중도 지수 (HHI Index 추이)</h3>
+          <canvas id="chart-hhi" height="320"></canvas>
+        </div>
+      </div>
+      <div class="insight-box" id="insight-share"></div>
+    </section>
+
+    <!-- Tab 10: 정규분포 & Z-score -->
+    <section class="tab-pane" id="tab-dist">
+      <div class="section-header">
+        <div>
+          <h2>Method 10. 확률분포 (도수분포표 & 표준화 Z-Score 이상치 탐지)</h2>
+          <p>매출 구간별 빈도 히스토그램과 |Z| ≥ 2.0 수준의 특이치(Outlier) 검출</p>
+        </div>
+        <div class="control-group">
+          <label>기업 선택:
+            <select id="dist-company-select" class="form-select">
+              <option value="hanbit">한빛테크</option>
+              <option value="mirae">미래솔루션</option>
+              <option value="saebom">새봄산업</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="grid-2col">
+        <div class="chart-card">
+          <h3>매출액 빈도 히스토그램 (Histogram)</h3>
+          <canvas id="chart-histogram" height="320"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>표준화 Z-Score 시계열 (±2.0 이상치 경계선)</h3>
+          <canvas id="chart-zscore" height="320"></canvas>
+        </div>
+      </div>
+      <div class="table-card" style="margin-top: 1.5rem;">
+        <h3>Z-Score 기반 특이치 탐지 목록 (|Z| ≥ 1.8)</h3>
+        <table class="styled-table" id="table-outliers">
+          <thead>
+            <tr>
+              <th>기준월</th>
+              <th>기업</th>
+              <th>실제 매출(억원)</th>
+              <th>평균 / 표준편차</th>
+              <th>Z-Score</th>
+              <th>특이치 판정</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="insight-box" id="insight-dist"></div>
+    </section>
+
+    <!-- Tab 11: 원본 데이터표 -->
+    <section class="tab-pane" id="tab-raw">
+      <div class="section-header">
+        <div>
+          <h2>전체 60개월 원본 데이터 및 합계</h2>
+          <p>엑셀 파일(가상기업 3개 5개년매출데이터.xlsx)의 원본 데이터</p>
+        </div>
+        <button class="btn btn-outline" id="btn-export-csv">CSV 내보내기</button>
+      </div>
+      <div class="table-card" style="max-height: 580px; overflow-y: auto;">
+        <table class="styled-table" id="table-raw">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>기준월</th>
+              <th>한빛테크 매출(억원)</th>
+              <th>미래솔루션 매출(억원)</th>
+              <th>새봄산업 매출(억원)</th>
+              <th>월 총합계(억원)</th>
+              <th>전월 대비 증감(총계)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>5개년 기업 매출 통계 분석 웹 앱 | Powered by Antigravity Agent & Chart.js | Pure HTML5, CSS3, Vanilla JavaScript</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
